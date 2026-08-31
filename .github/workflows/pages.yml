@@ -24,9 +24,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # configure-pages 会在 Pages 尚未启用时自动启用并创建站点
+      # enablement: true —— 若 Pages 尚未开通则自动开通（否则默认 false 会直接报 Not Found）
       - name: Configure Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
