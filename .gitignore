@@ -1,0 +1,7 @@
+# 归档/备份内容不进版本库（本地保留即可）
+archive/
+# 系统与编辑器杂项
+.DS_Store
+Thumbs.db
+*.log
+node_modules/

@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<!-- 本工作台为单文件 HTML（localStorage 存储方案），全内联零外链，遵循「小台」工作台标准 -->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>wzd的工作台</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar (PC) -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo"><svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg></div>
+      <div><h1>wzd的工作台</h1><div class="sub">电梯更新改造 · 实习</div></div>
+    </div>
+    <div class="nav-item active" data-tab="tasks">
+      <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4l-2-2-10 9-3-3-2 2 5 5zm-7 9h20v2H2z"/></svg>今日待办
+    </div>
+    <div class="nav-item" data-tab="policies">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 7V3.5L18.5 9H13z"/></svg>政策研究
+    </div>
+    <div class="nav-item" data-tab="projects">
+      <svg viewBox="0 0 24 24"><path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z"/></svg>项目台账
+    </div>
+    <div class="nav-item" data-tab="cad">
+      <svg viewBox="0 0 24 24"><path d="M3 3h18v18H3V3zm2 2v4h4V5H5zm6 0v4h4V5h-4zm6 0v4h2V5h-2zM5 11v4h4v-4H5zm6 0v4h4v-4h-4zm6 0v4h2v-4h-2zM5 17v2h4v-2H5zm6 0v2h4v-2h-4zm6 0v2h2v-2h-2z"/></svg>CAD映射
+    </div>
+    <div class="nav-item" data-tab="english">
+      <span style="font-size:19px;line-height:1;width:19px;text-align:center;flex-shrink:0">🐟</span>
+    </div>
+    <div class="nav-spacer"></div>
+    <div class="status-pill"><span class="status-dot"></span>本地模式 · 已保存</div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <header class="topbar">
+      <div>
+        <div class="page-title" id="pageTitle">今日待办</div>
+        <div class="page-desc" id="pageDesc">逾期与临近任务一目了然</div>
+      </div>
+      <button class="icon-btn" id="openDrawer" aria-label="设置">
+        <svg viewBox="0 0 24 24"><path d="M19.14 12.94a7.49 7.49 0 0 0 .05-.94 7.49 7.49 0 0 0-.05-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.61-.22l-2.39.96a7.3 7.3 0 0 0-1.62-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96a.5.5 0 0 0-.61.22L2.7 8.84a.5.5 0 0 0 .12.64l2.03 1.58c-.03.31-.05.62-.05.94s.02.63.05.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.14.24.42.34.68.22l2.39-.96c.49.38 1.03.7 1.62.94l.36 2.54c.04.24.25.42.5.42h3.84c.25 0 .46-.18.5-.42l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.26.12.54.02.68-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/></svg>
+      </button>
+    </header>
+
+    <div class="content">
+      <!-- TASKS -->
+      <section id="sec-tasks">
+        <div class="card today-board">
+          <div class="card-title">
+            <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 11h-5v-2h3V6h2v7z"/></svg>
+            今天要处理
+          </div>
+          <div class="today-list" id="todayList"></div>
+        </div>
+
+        <div class="card">
+          <div class="section-head"><h2>添加任务</h2></div>
+          <div class="form-grid">
+            <div class="field"><label>任务名</label><input id="t-title" placeholder="如：提交补贴对账表"></div>
+            <div class="field"><label>归属项目</label><input id="t-project" placeholder="如：玉岱美庐 5"></div>
+            <div class="field"><label>优先级</label>
+              <select id="t-priority"><option value="P0">P0 紧急</option><option value="P1" selected>P1 重要</option><option value="P2">P2 一般</option></select>
+            </div>
+            <div class="field"><label>截止日</label><input id="t-due" type="date"></div>
+            <div class="field"><label>&nbsp;</label><button class="btn-primary" id="addTask">添加</button></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="filter-bar" id="taskFilter">
+            <span class="chip on" data-f="all">全部</span>
+            <span class="chip" data-f="todo">待办</span>
+            <span class="chip" data-f="doing">进行中</span>
+            <span class="chip" data-f="done">已完成</span>
+          </div>
+          <div id="taskList"></div>
+        </div>
+      </section>
+
+      <!-- POLICIES -->
+      <section id="sec-policies" style="display:none">
+        <div class="card">
+          <div class="section-head"><h2>添加政策</h2></div>
+          <div class="form-grid">
+            <div class="field"><label>政策名</label><input id="p-name" placeholder="如：武汉市加装电梯补贴办法"></div>
+            <div class="field"><label>层级</label>
+              <select id="p-level"><option value="中央">中央</option><option value="武汉地方">武汉地方</option><option value="其他">其他</option></select>
+            </div>
+            <div class="field"><label>类别</label>
+              <select id="p-category"><option value="国债">国债</option><option value="补贴">补贴</option><option value="更新改造">更新改造</option><option value="其他">其他</option></select>
+            </div>
+            <div class="field"><label>状态</label>
+              <select id="p-status"><option value="研读中">研读中</option><option value="待复核">待复核</option><option value="已归档">已归档</option></select>
+            </div>
+            <div class="field"><label>来源链接</label><input id="p-source" placeholder="URL 或 Obsidian 链接"></div>
+            <div class="field"><label>冲突标记</label>
+              <select id="p-conflict"><option value="no">无</option><option value="yes">地方≠中央，待裁定</option></select>
+            </div>
+            <div class="field"><label>笔记</label><input id="p-note" placeholder="关键结论 / 矛盾点"></div>
+            <div class="field"><label>&nbsp;</label><button class="btn-primary" id="addPolicy">添加</button></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="filter-bar" id="policyFilter">
+            <span class="chip on" data-f="all">全部</span>
+            <span class="chip" data-f="中央">中央</span>
+            <span class="chip" data-f="武汉地方">武汉地方</span>
+            <span class="chip" data-f="conflict">⚠ 冲突待裁定</span>
+          </div>
+          <div id="policyList"></div>
+        </div>
+      </section>
+
+      <!-- PROJECTS -->
+      <section id="sec-projects" style="display:none">
+        <div class="card">
+          <div class="section-head"><h2>添加项目</h2></div>
+          <div class="form-grid">
+            <div class="field"><label>项目名</label><input id="pr-name" placeholder="如：玉岱美庐 5"></div>
+            <div class="field"><label>CSC 号</label><input id="pr-csc" placeholder="如：CSC05253236"></div>
+            <div class="field"><label>梯号</label><input id="pr-lift" placeholder="如：1#L1-2"></div>
+            <div class="field"><label>阶段</label>
+              <select id="pr-stage"><option>工勘</option><option>需求</option><option selected>CAD</option><option>订货</option><option>安装</option><option>验收</option></select>
+            </div>
+            <div class="field"><label>负责人</label><input id="pr-owner" placeholder="姓名"></div>
+            <div class="field"><label>补贴档位</label>
+              <select id="pr-subsidy">
+                <option value="100000">10 万元</option>
+                <option value="150000">15 万元</option>
+                <option value="200000" selected>20 万元</option>
+              </select>
+            </div>
+            <div class="field"><label>备注</label><input id="pr-note" placeholder="选填"></div>
+            <div class="field"><label>&nbsp;</label><button class="btn-primary" id="addProject">添加</button></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-head"><h2>补贴档位分布</h2></div>
+          <div id="projChart"></div>
+        </div>
+
+        <div class="card">
+          <div id="projectList"></div>
+        </div>
+      </section>
+
+      <!-- CAD -->
+      <section id="sec-cad" style="display:none">
+        <div class="card">
+          <div class="section-head"><h2>添加 CAD 字段映射</h2></div>
+          <div class="form-grid">
+            <div class="field"><label>报告名</label><input id="c-report" placeholder="如：玉岱美庐需求报告"></div>
+            <div class="field"><label>梯号</label><input id="c-lift" placeholder="如：1#L1-2"></div>
+            <div class="field"><label>CSC 号</label><input id="c-csc" placeholder="如：CSC05253236"></div>
+            <div class="field"><label>状态</label>
+              <select id="c-status"><option>草案</option><option>已生成</option><option>已核对</option><option selected>终版</option></select>
+            </div>
+            <div class="field"><label>字段总数</label><input id="c-total" type="number" placeholder="136"></div>
+            <div class="field"><label>已溯源</label><input id="c-sourced" type="number" placeholder="54"></div>
+            <div class="field"><label>默认值</label><input id="c-default" type="number" placeholder="39"></div>
+            <div class="field"><label>需澄清</label><input id="c-clarify" type="number" placeholder="0"></div>
+            <div class="field"><label>用户填写</label><input id="c-user" type="number" placeholder="21"></div>
+            <div class="field"><label>终版路径</label><input id="c-path" placeholder="CAD字段映射终版_玉岱美庐.xlsx"></div>
+            <div class="field"><label>备注</label><input id="c-note" placeholder="选填"></div>
+            <div class="field"><label>&nbsp;</label><button class="btn-primary" id="addCad">添加</button></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="filter-bar" id="cadFilter">
+            <span class="chip on" data-f="all">全部</span>
+            <span class="chip" data-f="clarify">⚠ 需澄清</span>
+            <span class="chip" data-f="final">已终版</span>
+          </div>
+          <div id="cadList"></div>
+        </div>
+      </section>
+
+      <!-- FISH corner (🐟 充电角) -->
+      <section id="sec-english" style="display:none">
+        <div class="fish-stats">
+          <div class="fish-stat"><div class="fs-num" id="fsWords">0</div><div class="fs-lbl">我的词库</div></div>
+          <div class="fish-stat"><div class="fs-num" id="fsStreak">0</div><div class="fs-lbl">连续打卡(天)</div></div>
+          <div class="fish-stat"><div class="fs-num" id="fsQuiz">—</div><div class="fs-lbl">测验正确率</div></div>
+          <div class="fish-stat"><div class="fs-num" id="fsReview">0</div><div class="fs-lbl">待复习</div></div>
+        </div>
+        <div class="fish-hint"><span class="dot"></span>全部模块纯本地运行，「🐟 充电角」查词基于内置 CET 离线词库（无需联网、无需任何配置）</div>
+
+        <div class="card fish-card">
+          <div class="card-title">🐟 离线查词 <span class="badge" id="dictNet">📴 离线 CET 词库</span></div>
+          <div style="display:flex;gap:10px;margin-bottom:4px">
+            <input id="dictInput" placeholder="输入英文单词，如 compliance" style="flex:1">
+            <button class="btn-primary" id="dictSearch">🔍 查词</button>
+          </div>
+          <div id="dictResult" style="margin-top:14px"></div>
+        </div>
+
+        <div class="card fish-card">
+          <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+            <span>🐟 今日一词 <span class="badge">六级词汇</span></span>
+            <button class="btn-primary" id="nextWord" style="min-height:34px;padding:6px 14px">🔄 换一批</button>
+          </div>
+          <div id="wordCard"></div>
+        </div>
+
+        <div class="card fish-card">
+          <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+            <span>🐟 今日语法 <span class="badge">六级语法</span></span>
+            <button class="btn-primary" id="nextGram" style="min-height:34px;padding:6px 14px">🔄 换一批</button>
+          </div>
+          <div id="gramCard"></div>
+        </div>
+
+        <div class="card fish-card">
+          <div class="card-title">🐟 今日打卡</div>
+          <div id="checkinBox"></div>
+        </div>
+
+        <div class="card fish-card">
+          <div class="card-title">🐟 复习计划 <span class="badge" id="reviewStat">0</span></div>
+          <div id="reviewBox"></div>
+        </div>
+
+        <div class="card fish-card">
+          <div class="card-title">🐟 小测验</div>
+          <div id="quizBox"></div>
+        </div>
+
+        <div class="card">
+          <div class="section-head"><h2>我的词库 <span class="badge" id="wbCount">0</span></h2>
+            <button class="btn-ghost" id="wbAddBtn" style="min-height:36px;padding:7px 14px">➕ 添加</button>
+          </div>
+          <div id="wbForm" style="display:none;margin-bottom:16px">
+            <div class="form-grid">
+              <div class="field"><label>单词</label><input id="wb-word" placeholder="如 compliance"></div>
+              <div class="field"><label>音标</label><input id="wb-ipa" placeholder="/kəmˈplaɪəns/"></div>
+              <div class="field"><label>词性</label><input id="wb-pos" placeholder="n./v."></div>
+              <div class="field"><label>分类</label><select id="wb-cat"><option value="office">办公</option><option value="pro">电梯专业</option><option value="daily">日常</option></select></div>
+              <div class="field" style="grid-column:1/-1"><label>释义</label><input id="wb-meaning" placeholder="如：合规；遵守"></div>
+              <div class="field" style="grid-column:1/-1"><label>例句（可选）</label><input id="wb-example" placeholder="Compliance with rules is required."></div>
+              <div class="field" style="grid-column:1/-1;display:flex;gap:10px"><button class="btn-primary" id="wbSave">保存</button><button class="btn-ghost" id="wbCancel">取消</button></div>
+            </div>
+          </div>
+          <div id="wordBank"></div>
+        </div>
+
+        <div class="card">
+          <div class="section-head"><h2>我的语法本 <span class="badge" id="gramCount">0</span></h2>
+            <button class="btn-ghost" id="gramAddBtn" style="min-height:36px;padding:7px 14px">➕ 添加</button>
+          </div>
+          <div id="gramForm" style="display:none;margin-bottom:16px">
+            <div class="form-grid">
+              <div class="field"><label>主题</label><input id="gram-topic" placeholder="如：完成时与 for/since"></div>
+              <div class="field"><label>分类</label><select id="gram-cat"><option value="tense">时态</option><option value="clause">从句</option><option value="mood">语气</option><option value="prep">介词冠词</option><option value="voice">语态</option><option value="word">词法</option></select></div>
+              <div class="field" style="grid-column:1/-1"><label>规则</label><textarea id="gram-rule" placeholder="一句话讲清规则"></textarea></div>
+              <div class="field" style="grid-column:1/-1"><label>正确例句（可多条，用 / 分隔）</label><textarea id="gram-right" placeholder="We have worked here for two years. / ... since 2024."></textarea></div>
+              <div class="field" style="grid-column:1/-1"><label>常见错误（可选，用 / 分隔）</label><textarea id="gram-wrong" placeholder="We have worked here since two years."></textarea></div>
+              <div class="field" style="grid-column:1/-1"><label>小贴士（可选）</label><input id="gram-tip" placeholder="for=多久；since=从何时起"></div>
+              <div class="field" style="grid-column:1/-1;display:flex;gap:10px"><button class="btn-primary" id="gramSave">保存</button><button class="btn-ghost" id="gramCancel">取消</button></div>
+            </div>
+          </div>
+          <div id="gramBank"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Bottom tab (mobile) -->
+  <nav class="bottom-tab">
+    <div class="nav-item active" data-tab="tasks">
+      <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4l-2-2-10 9-3-3-2 2 5 5zm-7 9h20v2H2z"/></svg>待办
+    </div>
+    <div class="nav-item" data-tab="policies">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 7V3.5L18.5 9H13z"/></svg>政策
+    </div>
+    <div class="nav-item" data-tab="projects">
+      <svg viewBox="0 0 24 24"><path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z"/></svg>项目
+    </div>
+    <div class="nav-item" data-tab="cad">
+      <svg viewBox="0 0 24 24"><path d="M3 3h18v18H3V3zm2 2v4h4V5H5zm6 0v4h4V5h-4zm6 0v4h2V5h-2zM5 11v4h4v-4H5zm6 0v4h4v-4h-4zm6 0v4h2v-4h-2zM5 17v2h4v-2H5zm6 0v2h4v-2h-4zm6 0v2h2v-2h-2z"/></svg>CAD
+    </div>
+    <div class="nav-item" data-tab="english">
+      <span style="font-size:20px;line-height:1">🐟</span>
+    </div>
+  </nav>
+</div>
+
+<!-- Drawer -->
+<div class="overlay" id="overlay"></div>
+<aside class="drawer" id="drawer">
+  <button class="drawer-close" id="closeDrawer"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+  <h3>数据与备份</h3>
+  <div class="hint">数据保存在本机浏览器（localStorage），关闭不丢。建议定期导出备份。</div>
+  <button class="btn-primary btn-block" id="exportBtn">导出 JSON 备份</button>
+  <button class="btn-ghost btn-block" id="importBtn">导入恢复</button>
+  <button class="btn-ghost btn-block" id="clearSampleBtn">清空示例数据</button>
+  <button class="btn-ghost btn-block" id="clearAllBtn" style="color:var(--red);border-color:#fca5a5">清空全部数据</button>
+  <div class="sync-card">
+    <h3>☁ 云同步（GitHub）</h3>
+    <div class="hint">多设备数据自动一致。Token 仅存本机浏览器，不会写入页面源码。</div>
+    <label>仓库 owner（GitHub 用户名）</label><input id="gh-owner" value="c8shakei" placeholder="用户名">
+    <label>仓库名</label><input id="gh-repo" value="wzd-desk-sync" placeholder="仓库名">
+    <label>分支</label><input id="gh-branch" value="main" placeholder="main">
+    <label>Token（fine-grained PAT，仅本仓库 contents 读写）</label><input id="gh-token" type="password" placeholder="github_pat_...">
+    <div class="sync-row">
+      <button class="btn-primary" id="gh-save-cfg" style="flex:1">保存配置</button>
+      <label class="sync-auto"><input type="checkbox" id="gh-auto" checked> 自动同步</label>
+    </div>
+    <div class="sync-row">
+      <button class="btn-ghost" id="gh-pull" style="flex:1">☁ 拉取</button>
+      <button class="btn-ghost" id="gh-push" style="flex:1">↑ 推送</button>
+    </div>
+    <div class="sync-status" id="gh-status">未同步</div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h3>📚 离线词库说明</h3>
+    <div class="hint">查词功能使用内置 CET 离线词库（办公/专业/六级 + 精选 CET4 核心词），<b>完全离线、零配置</b>。未收录的单词可直接「加入我的词库」自行补充释义，数据保存在本机浏览器中。</div>
+  </div>
+  <input type="file" id="importFile" accept="application/json" style="display:none">
+</aside>
+
+<script src="js/dict_part1.js"></script>
+<script src="js/dict_part2.js"></script>
+<script src="js/dict_part3.js"></script>
+<script src="js/dict_part4.js"></script>
+<script src="js/dict_part5.js"></script>
+
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
