@@ -160,11 +160,7 @@
             <div class="field"><label>状态</label>
               <select id="c-status"><option>草案</option><option>已生成</option><option>已核对</option><option selected>终版</option></select>
             </div>
-            <div class="field"><label>字段总数</label><input id="c-total" type="number" placeholder="136"></div>
-            <div class="field"><label>已溯源</label><input id="c-sourced" type="number" placeholder="54"></div>
-            <div class="field"><label>默认值</label><input id="c-default" type="number" placeholder="39"></div>
-            <div class="field"><label>需澄清</label><input id="c-clarify" type="number" placeholder="0"></div>
-            <div class="field"><label>用户填写</label><input id="c-user" type="number" placeholder="21"></div>
+            <div class="field" style="grid-column:1/-1"><label>字段明细</label><div class="cf-hint">新记录自动关联 136 个标准 CAD 字段，各类计数由明细实时统计，无需手工填写</div></div>
             <div class="field"><label>终版路径</label><input id="c-path" placeholder="CAD字段映射终版_玉岱美庐.xlsx"></div>
             <div class="field"><label>备注</label><input id="c-note" placeholder="选填"></div>
             <div class="field"><label>&nbsp;</label><button class="btn-primary" id="addCad">添加</button></div>
@@ -332,6 +328,7 @@
 
 
 <script src="js/data.js"></script>
+<script src="js/cad_fields.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

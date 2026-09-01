@@ -256,6 +256,86 @@
 
   // ---- CAD field mapping ledger ----
   var cadF="all";
+  var cadOpen={}, cadFG={}, cadFH={}, cadEdit={};
+  function cadGroups(){ return (typeof CAD_GROUPS!=="undefined")?CAD_GROUPS:[]; }
+  function cadHandles(){ return (typeof CAD_HANDLES!=="undefined")?CAD_HANDLES:[]; }
+  // 处理方式 -> 英文标识，供 CSS 类名使用（避开中文类名）
+  function hSlug(h){ return {"已溯源":"sourced","默认值":"default","我来填":"user","需澄清":"clarify","不用管":"ignore","CAD自动":"auto"}[h]||"other"; }
+  // 合并「标准字段模板 CAD_FIELDS」与「本记录覆盖值 c.fields」；blank 表示新记录，值待填
+  function cadFieldsOf(c){
+    var base=(typeof CAD_FIELDS!=="undefined")?CAD_FIELDS:[];
+    var ov=(c&&c.fields)||{};
+    return base.map(function(f){
+      if(c&&c.blank) return {g:f.g,f:f.f,cv:"",src:f.src,rv:"",st:"报告未提及",note:"",ans:f.ans,h:"报告未提及"};
+      var o=ov[f.f]||{};
+      return {g:f.g,f:f.f,
+        cv:(o.cv!=null?o.cv:f.cv), src:(o.src!=null?o.src:f.src), rv:(o.rv!=null?o.rv:f.rv),
+        st:(o.st!=null?o.st:f.st), note:(o.note!=null?o.note:f.note), ans:(o.ans!=null?o.ans:f.ans),
+        h:(o.h!=null?o.h:f.h)};
+    });
+  }
+  // 计数由明细实时统计并写回，不再手工填写，避免与明细对不上
+  function recalcCad(c){
+    var fs=cadFieldsOf(c), d={};
+    fs.forEach(function(f){ d[f.h]=(d[f.h]||0)+1; });
+    c.total=fs.length; c.sourced=d["已溯源"]||0; c.def=d["默认值"]||0; c.user=d["我来填"]||0;
+    c.clarify=d["需澄清"]||0; c.auto=d["CAD自动"]||0; c.ignore=d["不用管"]||0;
+  }
+  function cadEditBox(c,fname){
+    var fs=cadFieldsOf(c), f=null;
+    fs.forEach(function(x){ if(x.f===fname) f=x; });
+    if(!f) return "";
+    var opts=cadHandles().map(function(h){ return '<option value="'+esc(h)+'"'+(h===f.h?" selected":"")+'>'+esc(h)+'</option>'; }).join("");
+    return '<div class="cf-editbox">'+
+      '<div class="cf-edit-title">编辑字段 · '+esc(f.g)+' / '+esc(f.f)+'</div>'+
+      '<div class="form-grid">'+
+        '<div class="field"><label>CAD 当前值</label><input id="cfe-v" value="'+esc(f.cv)+'"></div>'+
+        '<div class="field"><label>报告出处</label><input id="cfe-src" value="'+esc(f.src)+'"></div>'+
+        '<div class="field"><label>报告值</label><input id="cfe-rv" value="'+esc(f.rv)+'"></div>'+
+        '<div class="field"><label>状态</label><input id="cfe-st" value="'+esc(f.st)+'"></div>'+
+        '<div class="field"><label>处理方式</label><select id="cfe-h">'+opts+'</select></div>'+
+        '<div class="field" style="grid-column:1/-1"><label>备注 / 问题</label><input id="cfe-note" value="'+esc(f.note)+'"></div>'+
+      '</div>'+
+      '<div class="cf-readonly">模板处理说明：'+esc(f.ans||"—")+'</div>'+
+      '<div class="cf-edit-acts"><button class="btn-primary" id="cfe-save">保存</button><button class="btn-ghost" id="cfe-cancel">取消</button></div>'+
+    '</div>';
+  }
+  function cadSaveField(c){
+    var fn=cadEdit[c.id]; if(!fn) return;
+    c.fields=c.fields||{};
+    c.fields[fn]={cv:$("#cfe-v").value.trim(),src:$("#cfe-src").value.trim(),rv:$("#cfe-rv").value.trim(),
+      st:$("#cfe-st").value.trim(),h:$("#cfe-h").value,note:$("#cfe-note").value.trim()};
+    if(c.blank) c.blank=false;
+    recalcCad(c); save(); cadEdit[c.id]=null; renderCad();
+  }
+  function renderCadDetail(c,host){
+    var fs=cadFieldsOf(c);
+    var g=cadFG[c.id]||"全部", h=cadFH[c.id]||"全部";
+    var list=fs.filter(function(f){ return (g==="全部"||f.g===g)&&(h==="全部"||f.h===h); });
+    var html='<div class="cad-detail">';
+    html+='<div class="cf-bar"><span class="cf-label">分组</span><span class="chip'+(g==="全部"?" on":"")+'" data-g="全部">全部</span>';
+    cadGroups().forEach(function(x){ html+='<span class="chip'+(g===x?" on":"")+'" data-g="'+esc(x)+'">'+esc(x)+'</span>'; });
+    html+='</div><div class="cf-bar"><span class="cf-label">处理方式</span><span class="chip'+(h==="全部"?" on":"")+'" data-h="全部">全部</span>';
+    cadHandles().forEach(function(x){ html+='<span class="chip'+(h===x?" on":"")+'" data-h="'+esc(x)+'">'+esc(x)+'</span>'; });
+    html+='</div><div class="cf-sum">共 <b>'+fs.length+'</b> 个字段，当前筛选出 <b>'+list.length+'</b> 个</div>';
+    if(cadEdit[c.id]) html+=cadEditBox(c,cadEdit[c.id]);
+    html+='<div class="cf-tablewrap"><table class="cf-table"><thead><tr>'+
+      '<th>分组</th><th>CAD 字段</th><th>CAD 当前值</th><th>处理方式</th><th>状态</th><th></th>'+
+      '</tr></thead><tbody>';
+    if(!list.length){ html+='<tr><td colspan="6" class="cf-empty">当前筛选下没有字段</td></tr>'; }
+    list.forEach(function(f){
+      html+='<tr><td class="cf-g">'+esc(f.g)+'</td><td class="cf-f">'+esc(f.f)+'</td><td class="cf-v">'+esc(f.cv||"—")+'</td>'+
+        '<td><span class="cf-h h-'+hSlug(f.h)+'">'+esc(f.h)+'</span></td><td class="cf-s">'+esc(f.st||"—")+'</td>'+
+        '<td><button class="mini-edit" data-edit="'+esc(f.f)+'">详情</button></td></tr>';
+    });
+    html+='</tbody></table></div></div>';
+    host.innerHTML=html;
+    host.querySelectorAll("[data-g]").forEach(function(el){ el.onclick=function(){ cadFG[c.id]=el.getAttribute("data-g"); renderCad(); }; });
+    host.querySelectorAll("[data-h]").forEach(function(el){ el.onclick=function(){ cadFH[c.id]=el.getAttribute("data-h"); renderCad(); }; });
+    host.querySelectorAll("[data-edit]").forEach(function(el){ el.onclick=function(){ cadEdit[c.id]=el.getAttribute("data-edit"); renderCad(); }; });
+    var sv=$("#cfe-save"); if(sv) sv.onclick=function(){ cadSaveField(c); };
+    var cc=$("#cfe-cancel"); if(cc) cc.onclick=function(){ cadEdit[c.id]=null; renderCad(); };
+  }
   function renderCad(){
     var box=$("#cadList");
     var list=cad.filter(function(c){
@@ -267,29 +347,39 @@
     if(!list.length){ box.innerHTML='<div class="empty">暂无 CAD 字段映射记录</div>'; return; }
     box.innerHTML="";
     list.forEach(function(c){
+      recalcCad(c);
       var clarify=(Number(c.clarify)||0);
       var div=document.createElement("div"); div.className="item";
       var body=document.createElement("div"); body.className="body";
       var clTag = clarify>0?'<span class="badge badge-conflict">⚠ 需澄清 '+clarify+' 项</span>':'';
       body.innerHTML='<div class="row1"><span class="name">'+esc(c.report)+'</span><span class="badge">'+esc(c.status)+'</span>'+clTag+'</div>'+
         '<div class="meta">'+(c.liftNo?('梯号：'+esc(c.liftNo)+' · '):'')+'CSC：'+(esc(c.csc)||'—')+'</div>'+
-        '<div class="meta">字段总数 <b>'+(Number(c.total)||0)+'</b> ｜ <span class="diff-pos">已溯源 '+(Number(c.sourced)||0)+'</span> ｜ 默认值 '+(Number(c.def)||0)+' ｜ <span class="'+(clarify>0?'diff-neg':'diff-zero')+'">需澄清 '+clarify+'</span> ｜ 用户填写 '+(Number(c.user)||0)+'</div>'+
+        '<div class="meta">字段总数 <b>'+(Number(c.total)||0)+'</b> ｜ <span class="diff-pos">已溯源 '+(Number(c.sourced)||0)+'</span> ｜ 默认值 '+(Number(c.def)||0)+' ｜ <span class="'+(clarify>0?'diff-neg':'diff-zero')+'">需澄清 '+clarify+'</span> ｜ 用户填写 '+(Number(c.user)||0)+' ｜ CAD自动 '+(Number(c.auto)||0)+' ｜ 不用管 '+(Number(c.ignore)||0)+'</div>'+
         (c.path?'<div class="meta">终版：'+esc(c.path)+'</div>':'')+
-        (c.note?'<div class="meta">'+esc(c.note)+'</div>':'');
+        (c.note?'<div class="meta">'+esc(c.note)+'</div>':'')+
+        '<div class="meta cf-hint">计数由字段明细自动统计；展开明细可逐条查看与修正</div>';
       var actions=document.createElement("div"); actions.className="item-actions";
+      var exp=document.createElement("button"); exp.className="mini-edit";
+      exp.textContent=cadOpen[c.id]?"收起明细":"展开明细";
+      exp.onclick=function(){ cadOpen[c.id]=!cadOpen[c.id]; cadEdit[c.id]=null; renderCad(); };
       var del=document.createElement("button"); del.className="mini-del"; del.innerHTML='<svg viewBox="0 0 24 24"><path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z"/></svg>';
       del.onclick=function(){ if(confirm("确认删除该 CAD 映射记录？")){ cad=cad.filter(function(x){return x.id!==c.id;}); save(); renderCad(); } };
-      actions.appendChild(del);
+      actions.appendChild(exp); actions.appendChild(del);
       div.appendChild(body); div.appendChild(actions);
       box.appendChild(div);
+      if(cadOpen[c.id]){
+        var host=document.createElement("div"); host.className="cad-detail-host";
+        box.appendChild(host);
+        renderCadDetail(c,host);
+      }
     });
   }
   $$("#cadFilter .chip").forEach(function(ch){ ch.onclick=function(){ $$("#cadFilter .chip").forEach(function(x){x.classList.remove("on");}); ch.classList.add("on"); cadF=ch.getAttribute("data-f"); renderCad(); }; });
   $("#addCad").onclick=function(){
     var report=$("#c-report").value.trim(); if(!report){ alert("请填写报告名"); return; }
-    cad.push({id:uid(),seeded:false,report:report,liftNo:$("#c-lift").value.trim(),csc:$("#c-csc").value.trim(),status:$("#c-status").value,total:Number($("#c-total").value)||0,sourced:Number($("#c-sourced").value)||0,def:Number($("#c-default").value)||0,clarify:Number($("#c-clarify").value)||0,user:Number($("#c-user").value)||0,path:$("#c-path").value.trim(),note:$("#c-note").value.trim(),updatedAt:Date.now()});
+    cad.push({id:uid(),seeded:false,blank:true,fields:{},report:report,liftNo:$("#c-lift").value.trim(),csc:$("#c-csc").value.trim(),status:$("#c-status").value,total:0,sourced:0,def:0,clarify:0,user:0,auto:0,ignore:0,path:$("#c-path").value.trim(),note:$("#c-note").value.trim(),updatedAt:Date.now()});
     save();
-    ["c-report","c-lift","c-csc","c-total","c-sourced","c-default","c-clarify","c-user","c-path","c-note"].forEach(function(id){ $("#"+id).value=""; });
+    ["c-report","c-lift","c-csc","c-path","c-note"].forEach(function(id){ $("#"+id).value=""; });
     renderCad();
   };
 
