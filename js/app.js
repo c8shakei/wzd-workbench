@@ -362,9 +362,12 @@
       var exp=document.createElement("button"); exp.className="mini-edit";
       exp.textContent=cadOpen[c.id]?"收起明细":"展开明细";
       exp.onclick=function(){ cadOpen[c.id]=!cadOpen[c.id]; cadEdit[c.id]=null; renderCad(); };
+      var xls=document.createElement("button"); xls.className="mini-edit";
+      xls.textContent="导出Excel";
+      xls.onclick=function(){ exportCadExcel(c); };
       var del=document.createElement("button"); del.className="mini-del"; del.innerHTML='<svg viewBox="0 0 24 24"><path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z"/></svg>';
       del.onclick=function(){ if(confirm("确认删除该 CAD 映射记录？")){ cad=cad.filter(function(x){return x.id!==c.id;}); save(); renderCad(); } };
-      actions.appendChild(exp); actions.appendChild(del);
+      actions.appendChild(exp); actions.appendChild(xls); actions.appendChild(del);
       div.appendChild(body); div.appendChild(actions);
       box.appendChild(div);
       if(cadOpen[c.id]){
@@ -373,6 +376,7 @@
         renderCadDetail(c,host);
       }
     });
+    updateCadTarget();
   }
   $$("#cadFilter .chip").forEach(function(ch){ ch.onclick=function(){ $$("#cadFilter .chip").forEach(function(x){x.classList.remove("on");}); ch.classList.add("on"); cadF=ch.getAttribute("data-f"); renderCad(); }; });
   $("#addCad").onclick=function(){
@@ -382,6 +386,92 @@
     ["c-report","c-lift","c-csc","c-path","c-note"].forEach(function(id){ $("#"+id).value=""; });
     renderCad();
   };
+
+  // ---- CAD 自动提取：拖入报告 → 本地解析 → 回填/新建记录 ----
+  function handleReportFile(file){
+    var meta=$("#cadDropMeta");
+    if(!file) return;
+    if(!/\.docx$/i.test(file.name)){
+      meta.innerHTML='<span class="diff-neg">⚠ 仅支持 .docx 格式（通力需求报告）</span>';
+      return;
+    }
+    if(typeof JSZip==="undefined" || typeof CAD_DOCX==="undefined" || typeof CAD_ENGINE==="undefined"){
+      meta.innerHTML='<span class="diff-neg">⚠ 解析库未加载，请刷新页面</span>';
+      return;
+    }
+    meta.innerHTML='<span class="diff-zero">解析中…（本地解析，数据不出本机）</span>';
+    var reader=new FileReader();
+    reader.onload=function(){
+      var buf=reader.result;
+      CAD_DOCX.extractAllTables(buf).then(function(tables){
+        if(!tables || !tables.length){
+          meta.innerHTML='<span class="diff-neg">未解析到任何表格，请确认是通力需求报告 .docx</span>';
+          return;
+        }
+        var csc=CAD_DOCX.getCscCode(file.name);
+        var res=CAD_ENGINE.runExtraction(tables, null, csc);
+        if(res.error){
+          meta.innerHTML='<span class="diff-neg">'+esc(res.error)+'</span>';
+          return;
+        }
+        var fields={};
+        res.rows.forEach(function(r){ fields[r.f]={cv:r.cv,src:r.src,rv:r.rv,st:r.st,h:r.h,note:r.note,ans:r.ans}; });
+        var target=$("#cadTarget").value;
+        var rec;
+        if(target==="__new__"){
+          rec={id:uid(),seeded:false,blank:false,fields:fields,
+               report:file.name.replace(/\.docx$/i,""),liftNo:"",csc:csc?("CSC"+csc):"",
+               status:"已生成",total:0,sourced:0,def:0,clarify:0,user:0,auto:0,ignore:0,
+               path:"",note:"拖入报告自动提取（"+res.rows.length+" 字段）",updatedAt:Date.now()};
+          cad.push(rec);
+        } else {
+          rec=null;
+          for(var i=0;i<cad.length;i++){ if(cad[i].id===target){ rec=cad[i]; break; } }
+          if(!rec){ meta.innerHTML='<span class="diff-neg">目标记录不存在，请刷新后重试</span>'; return; }
+          rec.fields=fields; rec.blank=false; rec.status=rec.status||"已生成"; rec.updatedAt=Date.now();
+          if(!rec.csc && csc) rec.csc="CSC"+csc;
+        }
+        recalcCad(rec); save();
+        cadOpen[rec.id]=true; cadEdit[rec.id]=null;
+        meta.innerHTML='<span class="diff-pos">✓ 提取完成：'+res.rows.length+' 个字段，已'+(target==="__new__"?"新建记录":"回填记录「"+(rec.report||"")+"」")+'（报告配置项 '+res.cfgCount+' 条）</span>';
+        renderCad();
+      }).catch(function(e){
+        meta.innerHTML='<span class="diff-neg">解析失败：'+esc(e&&e.message?e.message:e)+'</span>';
+      });
+    };
+    reader.readAsArrayBuffer(file);
+  }
+  function updateCadTarget(){
+    var sel=$("#cadTarget"); if(!sel) return;
+    var opts='<option value="__new__">＋ 新建 CAD 记录</option>';
+    cad.forEach(function(c){
+      opts+='<option value="'+esc(c.id)+'">'+(esc(c.report||"未命名"))+(c.liftNo?(" · "+esc(c.liftNo)):"")+'</option>';
+    });
+    sel.innerHTML=opts;
+    var openId=null;
+    for(var k in cadOpen){ if(cadOpen[k]){ openId=k; break; } }
+    sel.value=openId||"__new__";
+  }
+  (function bindCadDrop(){
+    var dz=$("#cadDrop"), pick=$("#cadPick"), inp=$("#cadFile");
+    if(!dz) return;
+    pick.onclick=function(){ inp.click(); };
+    inp.onchange=function(){ if(inp.files&&inp.files[0]) handleReportFile(inp.files[0]); inp.value=""; };
+    ["dragenter","dragover"].forEach(function(ev){ dz.addEventListener(ev,function(e){ e.preventDefault(); e.stopPropagation(); dz.classList.add("drag"); }); });
+    ["dragleave","drop"].forEach(function(ev){ dz.addEventListener(ev,function(e){ e.preventDefault(); e.stopPropagation(); dz.classList.remove("drag"); }); });
+    dz.addEventListener("drop",function(e){
+      var dt=e.dataTransfer; if(dt&&dt.files&&dt.files.length){ handleReportFile(dt.files[0]); }
+    });
+  })();
+
+  // ---- CAD 字段对照表导出 Excel（手写 OOXML，状态配色，离线）----
+  function exportCadExcel(c){
+    if(typeof CAD_XLSX==="undefined" || typeof JSZip==="undefined"){ alert("Excel 导出库未加载，请刷新页面"); return; }
+    var fs=cadFieldsOf(c);
+    var rows=[["序号","CAD页面","CAD字段","处理方式","提取值/标记","报告出处","状态","备注"]];
+    fs.forEach(function(f,i){ rows.push([i+1, f.g, f.f, f.h, f.cv, f.src, f.st, f.note]); });
+    CAD_XLSX.download(rows, "CAD字段对照表_"+(c.report||"export")+".xlsx");
+  }
 
   // ---- 🐟 充电角 (English learning / 摸鱼区) ----
 // == WORDS 已迁移至 js/data.js ==

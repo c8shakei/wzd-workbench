@@ -152,6 +152,24 @@
       <!-- CAD -->
       <section id="sec-cad" style="display:none">
         <div class="card">
+          <div class="section-head"><h2>📥 拖入需求报告自动提取</h2></div>
+          <div class="hint">把通力（KONE）需求报告 <b>.docx</b> 拖到下方区域，浏览器本地解析，自动回填 136 个 CAD 字段（数据不出本机）。支持含 afchunk 子文档的报告。</div>
+          <div class="drop-zone" id="cadDrop">
+            <div class="dz-inner">
+              <svg viewBox="0 0 24 24" width="34" height="34"><path d="M19 13v6H5v-6H3v8h18v-8h-2zM11 3v9.17l-2.59-2.58L7 11l5 5 5-5-1.41-1.41L13 12.17V3h-2z" fill="currentColor"/></svg>
+              <div>拖入报告，或 <button type="button" class="link-btn" id="cadPick">选择文件</button></div>
+              <div class="dz-sub">未选中记录时自动新建；选中下方某条记录（回填目标）则覆盖其字段</div>
+            </div>
+            <div class="dz-meta" id="cadDropMeta"></div>
+            <input type="file" id="cadFile" accept=".docx" style="display:none">
+          </div>
+          <div class="form-grid" style="margin-top:12px">
+            <div class="field" style="grid-column:1/-1"><label>回填目标</label>
+              <select id="cadTarget"><option value="__new__">＋ 新建 CAD 记录</option></select>
+            </div>
+          </div>
+        </div>
+        <div class="card">
           <div class="section-head"><h2>添加 CAD 字段映射</h2></div>
           <div class="form-grid">
             <div class="field"><label>报告名</label><input id="c-report" placeholder="如：玉岱美庐需求报告"></div>
@@ -329,6 +347,14 @@
 
 <script src="js/data.js"></script>
 <script src="js/cad_fields.js"></script>
+
+<!-- CAD 自动提取：本地库（离线，无 CDN 依赖） -->
+<script src="js/lib/jszip.min.js"></script>
+<script src="js/cad_rules.js"></script>
+<script src="js/docx_parse.js"></script>
+<script src="js/cad_engine.js"></script>
+<script src="js/cad_xlsx.js"></script>
+
 <script src="js/app.js"></script>
 </body>
 </html>

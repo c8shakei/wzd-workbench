@@ -279,3 +279,16 @@
   .cf-readonly{font-size:12px;color:var(--muted);margin:8px 0;line-height:1.7}
   .cf-edit-acts{display:flex;gap:10px;margin-top:12px}
   .cf-edit-acts .btn-primary,.cf-edit-acts .btn-ghost{min-height:40px;padding:9px 20px}
+
+  /* ---- CAD 拖入提取区 ---- */
+  .drop-zone{border:2px dashed var(--border);border-radius:14px;padding:26px 18px;text-align:center;color:var(--muted);background:var(--bg);transition:.2s;cursor:pointer}
+  .drop-zone.drag{border-color:var(--primary);background:var(--primary-soft);color:var(--primary-dark)}
+  .drop-zone .dz-inner{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:14px}
+  .drop-zone .dz-inner svg{color:var(--primary)}
+  .drop-zone .dz-sub{font-size:12px;color:var(--muted);margin-top:2px}
+  .drop-zone .dz-meta{margin-top:12px;font-size:13px;min-height:18px}
+  .link-btn{background:none;border:none;color:var(--primary);cursor:pointer;font-size:14px;padding:0;text-decoration:underline}
+  .link-btn:hover{color:var(--primary-dark)}
+  .diff-pos{color:var(--primary-dark);font-weight:600}
+  .diff-neg{color:var(--red);font-weight:600}
+  .diff-zero{color:var(--muted)}
