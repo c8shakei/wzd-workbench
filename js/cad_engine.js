@@ -177,8 +177,32 @@
     return { liftId: liftId, cfgCount: Object.keys(cfg).length, rows: rows };
   }
 
+  // 主流程变体：直接吃预构建的配置字典（PDF 适配器产出的 config dict）
+  // rawCfg: { "参数名": "值", ... }（键名与引擎 lookup 键一致，含括号原名亦可，靠 normName 兜底）
+  function runFromConfig(rawCfg, cscCode, liftId) {
+    if (!global.CAD_RULES) return { error: "CAD_RULES 未加载" };
+    if (!rawCfg || !Object.keys(rawCfg).length) return { error: "配置字典为空" };
+    var cfg = {}, cfgNorm = {};
+    Object.keys(rawCfg).forEach(function (k) {
+      var v = rawCfg[k];
+      if (v == null) return;
+      cfg[k] = v;
+      cfgNorm[normName(k)] = v;
+    });
+    var ctx = { cscCode: cscCode, resolved: {} };
+    var rows = [];
+    for (var i = 0; i < global.CAD_RULES.length; i++) {
+      var pg = global.CAD_RULES[i][0], fd = global.CAD_RULES[i][1], rule = global.CAD_RULES[i][2];
+      var r = resolveField(pg, fd, rule, cfg, cfgNorm, ctx);
+      ctx.resolved[pg + "\u0000" + fd] = r.cv;
+      rows.push(r);
+    }
+    return { liftId: liftId || "", cfgCount: Object.keys(cfg).length, rows: rows };
+  }
+
   global.CAD_ENGINE = {
     runExtraction: runExtraction,
+    runFromConfig: runFromConfig,
     applyTransform: applyTransform,
     resolveField: resolveField
   };

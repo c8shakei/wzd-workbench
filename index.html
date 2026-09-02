@@ -152,8 +152,8 @@
       <!-- CAD -->
       <section id="sec-cad" style="display:none">
         <div class="card">
-          <div class="section-head"><h2>📥 拖入需求报告自动提取</h2></div>
-          <div class="hint">把通力（KONE）需求报告 <b>.docx</b> 拖到下方区域，浏览器本地解析，自动回填 136 个 CAD 字段（数据不出本机）。支持含 afchunk 子文档的报告。</div>
+          <div class="section-head"><h2>📥 拖入报告 / 导入配置 自动提取</h2></div>
+          <div class="hint">把通力（KONE）<b>.docx</b> 需求报告拖到下方区域，浏览器本地解析，自动回填 136 个 CAD 字段（数据不出本机）。<b>PDF 技术规格报告</b>请先用本地脚本 <code>pdf_to_cadjson.py</code> 转成 <code>config.json</code>，再点「导入 PDF 配置」。</div>
           <div class="drop-zone" id="cadDrop">
             <div class="dz-inner">
               <svg viewBox="0 0 24 24" width="34" height="34"><path d="M19 13v6H5v-6H3v8h18v-8h-2zM11 3v9.17l-2.59-2.58L7 11l5 5 5-5-1.41-1.41L13 12.17V3h-2z" fill="currentColor"/></svg>
@@ -163,9 +163,15 @@
             <div class="dz-meta" id="cadDropMeta"></div>
             <input type="file" id="cadFile" accept=".docx" style="display:none">
           </div>
+          <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+            <button type="button" class="btn-ghost" id="cadJsonPick">📄 导入 PDF 配置 (JSON)</button>
+            <span class="dz-sub" style="margin:0">由本地 <code>pdf_to_cadjson.py</code> 生成的 <code>config.json</code>（支持一份多梯）</span>
+            <input type="file" id="cadJsonFile" accept=".json" style="display:none">
+          </div>
           <div class="form-grid" style="margin-top:12px">
             <div class="field" style="grid-column:1/-1"><label>回填目标</label>
               <select id="cadTarget"><option value="__new__">＋ 新建 CAD 记录</option></select>
+              <div class="cf-hint">导入多梯 JSON 时，每台梯自动各建一条记录（忽略此选择）</div>
             </div>
           </div>
         </div>

@@ -387,7 +387,34 @@
     renderCad();
   };
 
-  // ---- CAD 自动提取：拖入报告 → 本地解析 → 回填/新建记录 ----
+  // ---- CAD 自动提取：把引擎结果提交为一条 CAD 记录（docx 与 json 共用）----
+  function commitExtraction(res, opts){
+    // opts: {reportName, cscDigits, targetId, liftId, sourceLabel}
+    if(res.error) return {ok:false,msg:res.error};
+    var fields={};
+    res.rows.forEach(function(r){ fields[r.f]={cv:r.cv,src:r.src,rv:r.rv,st:r.st,h:r.h,note:r.note,ans:r.ans}; });
+    var target=opts.targetId||"__new__";
+    var rec;
+    if(target==="__new__"){
+      rec={id:uid(),seeded:false,blank:false,fields:fields,
+           report:opts.reportName,liftNo:opts.liftId||"",csc:opts.cscDigits?("CSC"+opts.cscDigits):"",
+           status:"已生成",total:0,sourced:0,def:0,clarify:0,user:0,auto:0,ignore:0,
+           path:"",note:(opts.sourceLabel||"自动提取")+"（"+res.rows.length+" 字段）",updatedAt:Date.now()};
+      cad.push(rec);
+    } else {
+      rec=null;
+      for(var i=0;i<cad.length;i++){ if(cad[i].id===target){ rec=cad[i]; break; } }
+      if(!rec) return {ok:false,msg:"目标记录不存在，请刷新后重试"};
+      rec.fields=fields; rec.blank=false; rec.status=rec.status||"已生成"; rec.updatedAt=Date.now();
+      if(!rec.csc && opts.cscDigits) rec.csc="CSC"+opts.cscDigits;
+      if(opts.liftId && !rec.liftNo) rec.liftNo=opts.liftId;
+    }
+    recalcCad(rec); save();
+    cadOpen[rec.id]=true; cadEdit[rec.id]=null;
+    return {ok:true,rec:rec,msg:(target==="__new__"?"新建记录":"回填记录「"+(rec.report||"")+"」")+"（"+res.rows.length+" 字段，报告配置项 "+res.cfgCount+" 条）"};
+  }
+
+  // ---- CAD 自动提取：拖入 .docx 需求报告 → 本地解析 → 回填/新建 ----
   function handleReportFile(file){
     var meta=$("#cadDropMeta");
     if(!file) return;
@@ -410,36 +437,66 @@
         }
         var csc=CAD_DOCX.getCscCode(file.name);
         var res=CAD_ENGINE.runExtraction(tables, null, csc);
-        if(res.error){
-          meta.innerHTML='<span class="diff-neg">'+esc(res.error)+'</span>';
-          return;
-        }
-        var fields={};
-        res.rows.forEach(function(r){ fields[r.f]={cv:r.cv,src:r.src,rv:r.rv,st:r.st,h:r.h,note:r.note,ans:r.ans}; });
-        var target=$("#cadTarget").value;
-        var rec;
-        if(target==="__new__"){
-          rec={id:uid(),seeded:false,blank:false,fields:fields,
-               report:file.name.replace(/\.docx$/i,""),liftNo:"",csc:csc?("CSC"+csc):"",
-               status:"已生成",total:0,sourced:0,def:0,clarify:0,user:0,auto:0,ignore:0,
-               path:"",note:"拖入报告自动提取（"+res.rows.length+" 字段）",updatedAt:Date.now()};
-          cad.push(rec);
-        } else {
-          rec=null;
-          for(var i=0;i<cad.length;i++){ if(cad[i].id===target){ rec=cad[i]; break; } }
-          if(!rec){ meta.innerHTML='<span class="diff-neg">目标记录不存在，请刷新后重试</span>'; return; }
-          rec.fields=fields; rec.blank=false; rec.status=rec.status||"已生成"; rec.updatedAt=Date.now();
-          if(!rec.csc && csc) rec.csc="CSC"+csc;
-        }
-        recalcCad(rec); save();
-        cadOpen[rec.id]=true; cadEdit[rec.id]=null;
-        meta.innerHTML='<span class="diff-pos">✓ 提取完成：'+res.rows.length+' 个字段，已'+(target==="__new__"?"新建记录":"回填记录「"+(rec.report||"")+"」")+'（报告配置项 '+res.cfgCount+' 条）</span>';
+        if(res.error){ meta.innerHTML='<span class="diff-neg">'+esc(res.error)+'</span>'; return; }
+        var r=commitExtraction(res,{reportName:file.name.replace(/\.docx$/i,""),cscDigits:csc,targetId:$("#cadTarget").value,liftId:"",sourceLabel:"拖入报告自动提取"});
+        if(!r.ok){ meta.innerHTML='<span class="diff-neg">'+esc(r.msg)+'</span>'; return; }
+        meta.innerHTML='<span class="diff-pos">✓ '+esc(r.msg)+'</span>';
         renderCad();
       }).catch(function(e){
         meta.innerHTML='<span class="diff-neg">解析失败：'+esc(e&&e.message?e.message:e)+'</span>';
       });
     };
     reader.readAsArrayBuffer(file);
+  }
+
+  // ---- CAD 自动提取：导入 PDF 配置 JSON（本地脚本 pdf_to_cadjson.py 产出）----
+  function handleJsonImport(file){
+    var meta=$("#cadDropMeta");
+    if(!file) return;
+    if(!/\.json$/i.test(file.name)){
+      meta.innerHTML='<span class="diff-neg">⚠ 请选择 .json 配置文件（由本地 pdf_to_cadjson.py 生成）</span>';
+      return;
+    }
+    if(typeof CAD_ENGINE==="undefined"){
+      meta.innerHTML='<span class="diff-neg">⚠ 解析库未加载，请刷新页面</span>';
+      return;
+    }
+    if(typeof CAD_ENGINE.runFromConfig!=="function"){
+      meta.innerHTML='<span class="diff-neg">⚠ 引擎不支持 config 导入，请刷新到最新版本</span>';
+      return;
+    }
+    meta.innerHTML='<span class="diff-zero">导入中…</span>';
+    var reader=new FileReader();
+    reader.onload=function(){
+      var data;
+      try{ data=JSON.parse(reader.result); }catch(e){ meta.innerHTML='<span class="diff-neg">JSON 解析失败：'+esc(e.message)+'</span>'; return; }
+      if(!data || !Array.isArray(data.lifts) || !data.lifts.length){
+        meta.innerHTML='<span class="diff-neg">JSON 格式不正确：缺少 lifts 数组</span>';
+        return;
+      }
+      var csc=String(data.csc||"").replace(/[^0-9]/g,"");
+      var reportName=String(data.file||file.name).replace(/\.pdf$/i,"").replace(/\.json$/i,"");
+      var target=$("#cadTarget").value;
+      var multi=data.lifts.length>1;
+      var done=0, created=0, filled=0, firstErr=null;
+      data.lifts.forEach(function(lift){
+        var cfg=lift.cfg||{};
+        var res=CAD_ENGINE.runFromConfig(cfg, csc, lift.liftId||"");
+        if(res.error){ firstErr=res.error; return; }
+        var opt={reportName:reportName+(lift.liftId?(" · "+lift.liftId):""),cscDigits:csc,
+                 targetId:(multi?"__new__":target),liftId:lift.liftId||"",sourceLabel:"PDF 配置导入"};
+        var r=commitExtraction(res,opt);
+        if(!r.ok){ firstErr=r.msg; return; }
+        if(opt.targetId==="__new__") created++; else filled++;
+        done++;
+      });
+      if(firstErr && done===0){ meta.innerHTML='<span class="diff-neg">'+esc(firstErr)+'</span>'; return; }
+      var msg='✓ 导入完成：'+done+' 台梯'+(created?('，新建 '+created+' 条'):'')+(filled?('，回填 '+filled+' 条'):'')+(multi?'（多梯自动各建一条）':'');
+      if(firstErr) msg+='；部分失败：'+firstErr;
+      meta.innerHTML='<span class="diff-pos">'+esc(msg)+'</span>';
+      renderCad();
+    };
+    reader.readAsText(file);
   }
   function updateCadTarget(){
     var sel=$("#cadTarget"); if(!sel) return;
@@ -454,9 +511,14 @@
   }
   (function bindCadDrop(){
     var dz=$("#cadDrop"), pick=$("#cadPick"), inp=$("#cadFile");
+    var jpick=$("#cadJsonPick"), jinp=$("#cadJsonFile");
     if(!dz) return;
     pick.onclick=function(){ inp.click(); };
     inp.onchange=function(){ if(inp.files&&inp.files[0]) handleReportFile(inp.files[0]); inp.value=""; };
+    if(jpick&&jinp){
+      jpick.onclick=function(){ jinp.click(); };
+      jinp.onchange=function(){ if(jinp.files&&jinp.files[0]) handleJsonImport(jinp.files[0]); jinp.value=""; };
+    }
     ["dragenter","dragover"].forEach(function(ev){ dz.addEventListener(ev,function(e){ e.preventDefault(); e.stopPropagation(); dz.classList.add("drag"); }); });
     ["dragleave","drop"].forEach(function(ev){ dz.addEventListener(ev,function(e){ e.preventDefault(); e.stopPropagation(); dz.classList.remove("drag"); }); });
     dz.addEventListener("drop",function(e){
