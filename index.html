@@ -153,7 +153,7 @@
       <section id="sec-cad" style="display:none">
         <div class="card">
           <div class="section-head"><h2>📥 拖入报告 / 导入配置 自动提取</h2></div>
-          <div class="hint">把通力（KONE）<b>.docx</b> 需求报告拖到下方区域，浏览器本地解析，自动回填 136 个 CAD 字段（数据不出本机）。<b>PDF 技术规格报告</b>请先用本地脚本 <code>pdf_to_cadjson.py</code> 转成 <code>config.json</code>，再点「导入 PDF 配置」。</div>
+          <div class="hint">把通力（KONE）<b>.docx</b> 需求报告或 <b>.pdf</b> 技术规格报告拖到下方区域即可自动提取 136 个 CAD 字段（数据不出本机）。<b>PDF 需先启动本地后端</b>：在 <code>assets/scripts/</code> 运行 <code>python serve.py</code>，浏览器会自动打开本地站点（已连接时上方显示「已连接本地后端」）；未启动时 PDF 可改用「📄 导入 PDF 配置 (JSON)」。</div>
           <div class="drop-zone" id="cadDrop">
             <div class="dz-inner">
               <svg viewBox="0 0 24 24" width="34" height="34"><path d="M19 13v6H5v-6H3v8h18v-8h-2zM11 3v9.17l-2.59-2.58L7 11l5 5 5-5-1.41-1.41L13 12.17V3h-2z" fill="currentColor"/></svg>
@@ -161,7 +161,7 @@
               <div class="dz-sub">未选中记录时自动新建；选中下方某条记录（回填目标）则覆盖其字段</div>
             </div>
             <div class="dz-meta" id="cadDropMeta"></div>
-            <input type="file" id="cadFile" accept=".docx" style="display:none">
+            <input type="file" id="cadFile" accept=".docx,.pdf" style="display:none">
           </div>
           <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
             <button type="button" class="btn-ghost" id="cadJsonPick">📄 导入 PDF 配置 (JSON)</button>

@@ -449,20 +449,44 @@
     reader.readAsArrayBuffer(file);
   }
 
-  // ---- CAD 自动提取：导入 PDF 配置 JSON（本地脚本 pdf_to_cadjson.py 产出）----
+  // ---- 共用：把后端/JSON 返回的 {lifts:[{liftId,cfg}]} 提交为记录（多梯各建一条）----
+  function applyCadImport(data, fileName){
+    var meta=$("#cadDropMeta");
+    if(!data || !Array.isArray(data.lifts) || !data.lifts.length){
+      meta.innerHTML='<span class="diff-neg">数据格式不正确：缺少 lifts 数组</span>'; return;
+    }
+    if(typeof CAD_ENGINE==="undefined" || typeof CAD_ENGINE.runFromConfig!=="function"){
+      meta.innerHTML='<span class="diff-neg">⚠ 引擎未加载，请刷新到最新版本</span>'; return;
+    }
+    var csc=String(data.csc||"").replace(/[^0-9]/g,"");
+    var reportName=String(data.file||fileName||"pdf").replace(/\.pdf$/i,"").replace(/\.json$/i,"");
+    var target=$("#cadTarget").value;
+    var multi=data.lifts.length>1;
+    var done=0, created=0, filled=0, firstErr=null;
+    data.lifts.forEach(function(lift){
+      var cfg=lift.cfg||{};
+      var res=CAD_ENGINE.runFromConfig(cfg, csc, lift.liftId||"");
+      if(res.error){ firstErr=res.error; return; }
+      var opt={reportName:reportName+(lift.liftId?(" · "+lift.liftId):""),cscDigits:csc,
+               targetId:(multi?"__new__":target),liftId:lift.liftId||"",sourceLabel:"PDF 自动提取"};
+      var r=commitExtraction(res,opt);
+      if(!r.ok){ firstErr=r.msg; return; }
+      if(opt.targetId==="__new__") created++; else filled++;
+      done++;
+    });
+    if(firstErr && done===0){ meta.innerHTML='<span class="diff-neg">'+esc(firstErr)+'</span>'; return; }
+    var msg='✓ 导入完成：'+done+' 台梯'+(created?('，新建 '+created+' 条'):'')+(filled?('，回填 '+filled+' 条'):'')+(multi?'（多梯自动各建一条）':'');
+    if(firstErr) msg+='；部分失败：'+firstErr;
+    meta.innerHTML='<span class="diff-pos">'+esc(msg)+'</span>';
+    renderCad();
+  }
+
+  // ---- CAD 自动提取：导入 PDF 配置 JSON（本地脚本 pdf_to_cadjson.py 产出，或后端返回）----
   function handleJsonImport(file){
     var meta=$("#cadDropMeta");
     if(!file) return;
     if(!/\.json$/i.test(file.name)){
-      meta.innerHTML='<span class="diff-neg">⚠ 请选择 .json 配置文件（由本地 pdf_to_cadjson.py 生成）</span>';
-      return;
-    }
-    if(typeof CAD_ENGINE==="undefined"){
-      meta.innerHTML='<span class="diff-neg">⚠ 解析库未加载，请刷新页面</span>';
-      return;
-    }
-    if(typeof CAD_ENGINE.runFromConfig!=="function"){
-      meta.innerHTML='<span class="diff-neg">⚠ 引擎不支持 config 导入，请刷新到最新版本</span>';
+      meta.innerHTML='<span class="diff-neg">⚠ 请选择 .json 配置文件（由本地 pdf_to_cadjson.py 生成，或后端返回）</span>';
       return;
     }
     meta.innerHTML='<span class="diff-zero">导入中…</span>';
@@ -470,33 +494,32 @@
     reader.onload=function(){
       var data;
       try{ data=JSON.parse(reader.result); }catch(e){ meta.innerHTML='<span class="diff-neg">JSON 解析失败：'+esc(e.message)+'</span>'; return; }
-      if(!data || !Array.isArray(data.lifts) || !data.lifts.length){
-        meta.innerHTML='<span class="diff-neg">JSON 格式不正确：缺少 lifts 数组</span>';
-        return;
-      }
-      var csc=String(data.csc||"").replace(/[^0-9]/g,"");
-      var reportName=String(data.file||file.name).replace(/\.pdf$/i,"").replace(/\.json$/i,"");
-      var target=$("#cadTarget").value;
-      var multi=data.lifts.length>1;
-      var done=0, created=0, filled=0, firstErr=null;
-      data.lifts.forEach(function(lift){
-        var cfg=lift.cfg||{};
-        var res=CAD_ENGINE.runFromConfig(cfg, csc, lift.liftId||"");
-        if(res.error){ firstErr=res.error; return; }
-        var opt={reportName:reportName+(lift.liftId?(" · "+lift.liftId):""),cscDigits:csc,
-                 targetId:(multi?"__new__":target),liftId:lift.liftId||"",sourceLabel:"PDF 配置导入"};
-        var r=commitExtraction(res,opt);
-        if(!r.ok){ firstErr=r.msg; return; }
-        if(opt.targetId==="__new__") created++; else filled++;
-        done++;
-      });
-      if(firstErr && done===0){ meta.innerHTML='<span class="diff-neg">'+esc(firstErr)+'</span>'; return; }
-      var msg='✓ 导入完成：'+done+' 台梯'+(created?('，新建 '+created+' 条'):'')+(filled?('，回填 '+filled+' 条'):'')+(multi?'（多梯自动各建一条）':'');
-      if(firstErr) msg+='；部分失败：'+firstErr;
-      meta.innerHTML='<span class="diff-pos">'+esc(msg)+'</span>';
-      renderCad();
+      applyCadImport(data, file.name);
     };
     reader.readAsText(file);
+  }
+
+  // ---- CAD 自动提取：拖入/选择 PDF → 走本地后端 /api/parse-pdf（无 JSON 步骤）----
+  function handlePdfFile(file){
+    var meta=$("#cadDropMeta");
+    if(!file) return;
+    if(!/\.pdf$/i.test(file.name)){
+      meta.innerHTML='<span class="diff-neg">⚠ 仅支持 .pdf 技术规格报告</span>';
+      return;
+    }
+    if(typeof CAD_ENGINE==="undefined" || typeof CAD_ENGINE.runFromConfig!=="function"){
+      meta.innerHTML='<span class="diff-neg">⚠ 引擎未加载，请刷新页面</span>';
+      return;
+    }
+    if(!window.BACKEND_OK){
+      meta.innerHTML='<span class="diff-neg">未检测到本地后端。请先运行 <code>python serve.py</code>，或改用「📄 导入 PDF 配置 (JSON)」。</span>';
+      return;
+    }
+    meta.innerHTML='<span class="diff-zero">后端解析中…（报告不出本机）</span>';
+    fetch("/api/parse-pdf",{method:"POST",headers:{"X-Filename":file.name},body:file})
+      .then(function(r){ return r.json().then(function(j){ if(!r.ok) throw new Error(j.error||("HTTP "+r.status)); return j; }); })
+      .then(function(data){ applyCadImport(data, file.name); })
+      .catch(function(e){ meta.innerHTML='<span class="diff-neg">解析失败：'+esc(e&&e.message?e.message:e)+'</span>'; });
   }
   function updateCadTarget(){
     var sel=$("#cadTarget"); if(!sel) return;
@@ -514,7 +537,11 @@
     var jpick=$("#cadJsonPick"), jinp=$("#cadJsonFile");
     if(!dz) return;
     pick.onclick=function(){ inp.click(); };
-    inp.onchange=function(){ if(inp.files&&inp.files[0]) handleReportFile(inp.files[0]); inp.value=""; };
+    inp.onchange=function(){
+      var f=inp.files&&inp.files[0]; if(!f) return;
+      if(/\.pdf$/i.test(f.name)) handlePdfFile(f); else handleReportFile(f);
+      inp.value="";
+    };
     if(jpick&&jinp){
       jpick.onclick=function(){ jinp.click(); };
       jinp.onchange=function(){ if(jinp.files&&jinp.files[0]) handleJsonImport(jinp.files[0]); jinp.value=""; };
@@ -522,8 +549,22 @@
     ["dragenter","dragover"].forEach(function(ev){ dz.addEventListener(ev,function(e){ e.preventDefault(); e.stopPropagation(); dz.classList.add("drag"); }); });
     ["dragleave","drop"].forEach(function(ev){ dz.addEventListener(ev,function(e){ e.preventDefault(); e.stopPropagation(); dz.classList.remove("drag"); }); });
     dz.addEventListener("drop",function(e){
-      var dt=e.dataTransfer; if(dt&&dt.files&&dt.files.length){ handleReportFile(dt.files[0]); }
+      var dt=e.dataTransfer; if(dt&&dt.files&&dt.files.length){
+        var f=dt.files[0];
+        if(/\.pdf$/i.test(f.name)) handlePdfFile(f); else handleReportFile(f);
+      }
     });
+  })();
+
+  // ---- 后端感知：若由本地 serve.py 托管，则 PDF 可直接拖入走后端解析 ----
+  (function probeBackend(){
+    window.BACKEND_OK=false;
+    try{
+      fetch("/api/ping",{method:"GET",cache:"no-store"})
+        .then(function(r){ return r.json(); })
+        .then(function(j){ if(j&&j.ok){ window.BACKEND_OK=true; var m=$("#cadDropMeta"); if(m) m.innerHTML='<span class="diff-pos">已连接本地后端，可直接拖入 PDF 自动提取</span>'; } })
+        .catch(function(){});
+    }catch(e){}
   })();
 
   // ---- CAD 字段对照表导出 Excel（手写 OOXML，状态配色，离线）----
